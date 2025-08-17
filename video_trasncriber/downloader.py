@@ -50,12 +50,18 @@ def _download_with_ytdlp(url: str, output_dir: str, filename: Optional[str]) -> 
 
     ydl_opts = {
         "outtmpl": out_template,
-        "format": "bv*+ba/b",             # best video + best audio; fallback to best
-        "merge_output_format": "mp4",     # final merged container
+        # Prefer mp4-compatible streams; fall back to best available
+        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best",
+        "merge_output_format": "mp4",
         "retries": 3,
         "nocheckcertificate": True,
         "quiet": True,
         "no_warnings": True,
+        # Ensure final MP4 if a merge/convert is needed
+        "postprocessors": [
+            {"key": "FFmpegMerger"},
+            {"key": "FFmpegVideoConvertor", "preferedformat": "mp4"},
+        ],
     }
 
     try:
@@ -171,7 +177,7 @@ def _download_with_pytube(url: str, output_dir: str, filename: Optional[str]) ->
             raise DownloadError("No suitable adaptive streams found (video or audio missing).")
 
         tmp_video = os.path.join(output_dir, f"{yt.video_id}_video.mp4")
-        # Audio may be webm/others; we'll still write .m4a/.mp4; ffmpeg handles inputs.
+        # Audio may be webm/m4a/etc.; ffmpeg handles inputs based on content
         tmp_audio = os.path.join(output_dir, f"{yt.video_id}_audio.m4a")
 
         best_video.download(output_path=output_dir, filename=os.path.basename(tmp_video))
@@ -190,7 +196,7 @@ def _download_with_pytube(url: str, output_dir: str, filename: Optional[str]) ->
         if os.path.exists(out_path):
             return out_path
 
-        raise DownloadError("Adaptive merge completed but final file not found.")
+        raise DownloadError("Adaptive merge completed but final file was not found.")
     except (PytubeError, RegexMatchError, VideoUnavailable, subprocess.CalledProcessError) as e:
         raise DownloadError(f"pytube adaptive failed: {e}")
 

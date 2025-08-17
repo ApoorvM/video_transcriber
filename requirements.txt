@@ -1,23 +1,13 @@
-# Core video processing
 moviepy>=2.0.1
 imageio-ffmpeg>=0.6.0
 soundfile
-noisereduce
-streamlit
-pytube
-yt-dlp
-
-
-# Audio separation (Demucs instead of Spleeter for Python 3.13)
 demucs>=4.0.1
-
-# Whisper (install directly from GitHub, PyPI tarball is broken on 3.13)
 git+https://github.com/openai/whisper.git
-
-# Torch (needed for Whisper & Demucs, let pip choose compatible build for Mac M1/M2)
 torch>=2.2.0
 torchaudio>=2.2.0
-
-# Utilities
 numpy>=1.26.0
 scipy>=1.12.0
+noisereduce>=0.3.1
+yt-dlp>=2024.8.6
+pytube>=15.0.0
+streamlit>=1.34.0

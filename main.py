@@ -12,8 +12,7 @@ torch.set_num_threads(1)
 
 import streamlit as st
 from video_trasncriber.lyric_extractor import LyricExtractor
-from video_trasncriber.downloader import download_video
- # you said you're using this
+from video_trasncriber.downloader import download_video, DownloadError
 
 st.set_page_config(page_title="Video Lyric Extractor", page_icon="🎵", layout="centered")
 st.title("Video Lyric Extractor")
@@ -33,12 +32,14 @@ with col_dl1:
         else:
             with st.spinner("Downloading video..."):
                 try:
-                    saved_path = download_video(video_url, output_dir="downloads") 
+                    saved_path = download_video(video_url, output_dir="downloads")
                     st.session_state["downloaded_path"] = saved_path
                     downloaded_path = saved_path
                     downloaded_path_placeholder.success(f"Downloaded to: {saved_path}")
-                except Exception as e:
+                except DownloadError as e:
                     downloaded_path_placeholder.error(f"Download failed: {e}")
+                except Exception as e:
+                    downloaded_path_placeholder.error(f"Unexpected error: {e}")
 
 with col_dl2:
     if st.button("Clear Download"):
@@ -69,11 +70,12 @@ language = st.selectbox(
     index=0
 )
 
-# Toggle: expose cleaned audio downloads
+# Toggles
 enable_audio_downloads = st.checkbox(
     "Make cleaned audio files available for download (vocals_norm.wav, audio_norm.wav)",
     value=True
 )
+use_demucs = st.checkbox("Separate vocals (Demucs)", value=True)
 
 step_labels = [
     "Audio Extraction",
@@ -106,10 +108,13 @@ def process_video(video_path, outputs_dir="outputs", lang="auto"):
     bars[idx].progress(100, text=f"{step_labels[idx]}: Done")
     gc.collect()
 
-    # 2) Demucs separation (CPU + 1 job configured inside video_utils)
+    # 2) Demucs separation (optional)
     idx = 1
     bars[idx].progress(10, text=f"{step_labels[idx]}: Starting")
-    vocals_path = extractor.silent_call(extractor.vu.separate_vocals, audio_path, "htdemucs")
+    if use_demucs:
+        vocals_path = extractor.silent_call(extractor.vu.separate_vocals, audio_path, "htdemucs")
+    else:
+        vocals_path = audio_path
     for i in (25, 50, 75, 100):
         bars[idx].progress(i, text=f"{step_labels[idx]}: {i}%")
         time.sleep(step_estimates[idx] / 4)

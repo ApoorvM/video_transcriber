@@ -56,11 +56,11 @@ class LyricExtractor:
         with contextlib.redirect_stdout(open(os.devnull, "w")), contextlib.redirect_stderr(open(os.devnull, "w")):
             return func(*args, **kwargs)
 
-    def run_pipeline(self, video_path: str, whisper_model, language: str = "auto"):
+    def run_pipeline(self, video_path: str, whisper_model, language: str = "auto", use_demucs: bool = True):
         """
         Run the full pipeline:
         - Extract audio
-        - Separate vocals (Demucs)
+        - (Optional) Separate vocals (Demucs)
         - Denoise + Normalize (both tracks)
         - Transcribe using provided Whisper model
         - Save lyrics to text files
@@ -69,6 +69,7 @@ class LyricExtractor:
             video_path: path to input video
             whisper_model: a loaded Whisper model instance (already loaded outside)
             language: language code for Whisper; use "auto" for autodetect
+            use_demucs: whether to separate vocals first
 
         Returns:
             dict with paths and transcription texts
@@ -86,11 +87,15 @@ class LyricExtractor:
         # demucs_input = mono_audio_path
         demucs_input = audio_path
 
-        # Section 2: Vocal Separation
-        print("=== Starting Vocal Separation (Demucs) ===")
-        t0 = time.time()
-        vocals_path = self.silent_call(self.vu.separate_vocals, demucs_input, "htdemucs")
-        self.log_step("Vocal separation (Demucs)", t0)
+        # Section 2: Vocal Separation (optional)
+        if use_demucs:
+            print("=== Starting Vocal Separation (Demucs) ===")
+            t0 = time.time()
+            vocals_path = self.silent_call(self.vu.separate_vocals, demucs_input, "htdemucs")
+            self.log_step("Vocal separation (Demucs)", t0)
+        else:
+            print("=== Skipping Demucs; using original audio as 'vocals' ===")
+            vocals_path = audio_path
         gc.collect()
 
         # Section 3: Denoising & Normalization
